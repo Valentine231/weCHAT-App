@@ -9,6 +9,9 @@ export default defineConfig({
     alias: {
       'react-native': 'react-native-web',
     },
+    define: {
+      'process.env': process.env,
+    },
   },
   optimizeDeps: {
     esbuildOptions: {
