@@ -32,27 +32,32 @@ const handleLogin = async () => {
 
 //using supabase for authentication and generating room code
 const generateRoomCode = async () => {
-    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-
     try {
+        // Generate a random room code
+        const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+        // Fetch the authenticated user
         const { data: { user }, error: sessionError } = await supabase.auth.getUser();
 
         if (sessionError || !user) {
-            alert('User not authenticated: ' + (sessionError?.message || 'No user found'));
-            return;
+            throw new Error(sessionError?.message || 'User not authenticated.');
         }
 
-        const { error } = await supabase
+        // Insert the room code into the database
+        const { error: insertError } = await supabase
             .from('room_codes')
             .insert([{ code, created_by: user.id }]);
 
-        if (error) {
-            alert('Error creating room code: ' + error.message);
-        } else {
-            alert(`Room Code Generated: ${code}`);
+        if (insertError) {
+            throw new Error(`Failed to create room code: ${insertError.message}`);
         }
-    } catch (error) {
-        console.error('Error generating room code:', error);
+
+        // Update the state and notify the user
+        setRoomCode(code);
+        alert(`Room Code Generated: ${code}`);
+    } catch (err) {
+        console.error('Error generating room code:', err);
+        alert(err.message || 'An unexpected error occurred while generating the room code.');
     }
 };
 
