@@ -46,7 +46,7 @@ const Profiles = ({ onProfileClick }) => {
         {profiles.map((profile) => (
           <ListItem
             key={profile.id}
-            button
+            button='true'
             onClick={() => onProfileClick(profile.id)}
             sx={{
               '&:hover': {
@@ -60,7 +60,7 @@ const Profiles = ({ onProfileClick }) => {
             <ListItemText
               primary={profile.name}
               secondary={profile.status}
-              TypographyProps={{ fontWeight: 'bold' }}
+              typographyprops={{font:'bold'}}
             />
           </ListItem>
         ))}

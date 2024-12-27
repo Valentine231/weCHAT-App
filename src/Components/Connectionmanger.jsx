@@ -2,6 +2,7 @@ import Peer from 'simple-peer';
 import { create } from 'zustand';
 import 'readable-stream'; // Polyfill for Node.js streams in browser environments
 
+// Compatibility checks
 if (!window.crypto || !window.crypto.getRandomValues) {
   console.error('Secure random number generation is not supported in this environment.');
 }
@@ -10,14 +11,23 @@ if (!('RTCPeerConnection' in window)) {
   console.error('WebRTC is not supported in this environment.');
 }
 
+if (!('ReadableStream' in window)) {
+  console.error('ReadableStream is not supported in this environment.');
+}
+
+// Environment variable for verbose logging
+const isVerboseLogging = process.env.VITE_VERBOSE_LOGGING === 'true';
+
 // Signal Store for WebRTC
 export const useSignalingStore = create((set) => ({
   signalData: null,
   setSignalData: (data) => {
-    console.log('Updating signal data in store:', {
-      type: data.type,
-      sdp: data.sdp.substring(0, 100) + '...', // Shorten for readability
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Updating signal data in store:', isVerboseLogging ? data : {
+        type: data.type,
+        sdp: data.sdp.substring(0, 100) + '...', // Shorten for readability
+      });
+    }
     set({ signalData: data });
   },
 }));
@@ -36,7 +46,10 @@ export const createInitiator = () => {
   const peer = new Peer({ initiator: true, trickle: false });
 
   peer.on('signal', (data) => {
-    console.log('Initiator signal data:', data);
+    console.log('Initiator signal data:', isVerboseLogging ? data : {
+      type: data.type,
+      sdp: data.sdp.substring(0, 100) + '...', // Shorten for readability
+    });
     useSignalingStore.getState().setSignalData(data);
   });
 
@@ -52,6 +65,7 @@ export const createInitiator = () => {
 
   peer.on('close', () => {
     console.warn('Initiator: Peer connection closed');
+    peer.destroy(); // Cleanup to avoid memory leaks
   });
 
   peer.on('error', (err) => {
@@ -63,12 +77,16 @@ export const createInitiator = () => {
 
 // Function to create a responder peer
 export const createResponder = (initiatorSignal) => {
+  if (!initiatorSignal || typeof initiatorSignal !== 'object') {
+    throw new Error('Invalid initiator signal provided to createResponder.');
+  }
+
   const peer = new Peer({ initiator: false, trickle: false });
 
   peer.on('signal', (data) => {
-    console.log('Responder signal data:', {
+    console.log('Responder signal data:', isVerboseLogging ? data : {
       type: data.type,
-      sdp: data.sdp.substring(0, 100) + '...', // Shortened log
+      sdp: data.sdp.substring(0, 100) + '...', // Shorten for readability
     });
     useSignalingStore.getState().setSignalData(data);
   });
@@ -87,6 +105,7 @@ export const createResponder = (initiatorSignal) => {
 
   peer.on('close', () => {
     console.warn('Responder: Peer connection closed');
+    peer.destroy(); // Cleanup to avoid memory leaks
   });
 
   peer.on('error', (err) => {
@@ -96,7 +115,6 @@ export const createResponder = (initiatorSignal) => {
   return peer;
 };
 
-
 // Function to send a message
 export const sendMessage = (peer, message) => {
   if (!peer || !message) {
@@ -104,8 +122,8 @@ export const sendMessage = (peer, message) => {
     return;
   }
 
-  if (peer._channel?.readyState !== 'open') {
-    console.error('Cannot send message: Data channel is not open');
+  if (!peer.connected) {
+    console.error('Cannot send message: Peer is not connected');
     return;
   }
 
@@ -117,6 +135,3 @@ export const sendMessage = (peer, message) => {
     console.error('Error sending message:', err);
   }
 };
-
-
-// export {useSignalingStore, useMessageStore  };
