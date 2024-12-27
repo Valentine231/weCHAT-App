@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
 import react from '@vitejs/plugin-react';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local' });
 
 export default defineConfig({
   plugins: [react()],
