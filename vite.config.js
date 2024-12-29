@@ -21,7 +21,7 @@ export default defineConfig({
     },
   },
   define: {
-    'process.env': {}, // Avoid exposing all variables; set to empty or only used by polyfills
+    'process.env': JSON.stringify({ NODE_ENV: process.env.NODE_ENV || 'development' }), // Avoid exposing all variables; set to empty or only used by polyfills
     'import.meta.env': JSON.stringify(exposedEnv), // Expose only selected variables
   },
   optimizeDeps: {
