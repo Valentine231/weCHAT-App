@@ -25,7 +25,7 @@ export const useSignalingStore = create((set) => ({
     if (process.env.NODE_ENV !== 'production') {
       console.log('Updating signal data in store:', isVerboseLogging ? data : {
         type: data.type,
-        sdp: data.sdp.substring(0, 100) + '...', // Shorten for readability
+        sdp: data.sdp ? data.sdp.substring(0, 100) + '...' : '', // Shorten for readability
       });
     }
     set({ signalData: data });
@@ -45,29 +45,34 @@ export const useMessageStore = create((set) => ({
 export const createInitiator = () => {
   const peer = new Peer({ initiator: true, trickle: false });
 
+  // Signal event: Send signaling data (offer)
   peer.on('signal', (data) => {
     console.log('Initiator signal data:', isVerboseLogging ? data : {
       type: data.type,
-      sdp: data.sdp.substring(0, 100) + '...', // Shorten for readability
+      sdp: data.sdp ? data.sdp.substring(0, 100) + '...' : '', // Shorten for readability
     });
-    useSignalingStore.getState().setSignalData(data);
+    useSignalingStore.getState().setSignalData(data); // Store signal data
   });
 
+  // Data event: Received message from the peer
   peer.on('data', (data) => {
     const receivedMessage = data.toString();
     console.log('Initiator received message:', receivedMessage);
     useMessageStore.getState().addMessage({ type: 'received', text: receivedMessage });
   });
 
+  // Connection event: Peer connected
   peer.on('connect', () => {
     console.log('Initiator: Peer connection established');
   });
 
+  // Close event: Peer connection closed
   peer.on('close', () => {
     console.warn('Initiator: Peer connection closed');
     peer.destroy(); // Cleanup to avoid memory leaks
   });
 
+  // Error event: Handle any peer errors
   peer.on('error', (err) => {
     console.error('Initiator: Peer error:', err);
   });
@@ -83,31 +88,37 @@ export const createResponder = (initiatorSignal) => {
 
   const peer = new Peer({ initiator: false, trickle: false });
 
+  // Signal event: Send signaling data (answer)
   peer.on('signal', (data) => {
     console.log('Responder signal data:', isVerboseLogging ? data : {
       type: data.type,
-      sdp: data.sdp.substring(0, 100) + '...', // Shorten for readability
+      sdp: data.sdp ? data.sdp.substring(0, 100) + '...' : '', // Shorten for readability
     });
-    useSignalingStore.getState().setSignalData(data);
+    useSignalingStore.getState().setSignalData(data); // Store signal data
   });
 
-  peer.signal(initiatorSignal); // Use initiator's signal
+  // Apply the initiator's signal
+  peer.signal(initiatorSignal);
 
+  // Data event: Received message from the peer
   peer.on('data', (data) => {
     const receivedMessage = data.toString();
     console.log('Responder received message:', receivedMessage);
     useMessageStore.getState().addMessage({ type: 'received', text: receivedMessage });
   });
 
+  // Connection event: Peer connected
   peer.on('connect', () => {
     console.log('Responder: Peer connection established');
   });
 
+  // Close event: Peer connection closed
   peer.on('close', () => {
     console.warn('Responder: Peer connection closed');
     peer.destroy(); // Cleanup to avoid memory leaks
   });
 
+  // Error event: Handle any peer errors
   peer.on('error', (err) => {
     console.error('Responder: Peer error:', err);
   });

@@ -46,14 +46,33 @@ const Chat = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
-      <Profiles onProfileClick={handleProfileClick} />
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on small screens, horizontally on larger ones
+        height: '100vh',
+      }}
+    >
+      {/* Profiles Sidebar */}
+      <Box
+        sx={{
+          width: { xs: '100%', sm: 250 }, // Full width on mobile, fixed width on larger screens
+          backgroundColor: '#f5f5f5',
+          padding: { xs: 1, sm: 2 }, // Adjust padding for different screen sizes
+          boxShadow: 3,
+        }}
+      >
+        <Profiles onProfileClick={handleProfileClick} />
+      </Box>
+
+      {/* Chat Content */}
       <Box
         sx={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#fff',
+          padding: { xs: 1, sm: 2 }, // Adjust padding for smaller screens
         }}
       >
         <ChatHistory messages={messages} />

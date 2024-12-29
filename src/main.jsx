@@ -14,7 +14,7 @@ import Errorpage from './Components/Errorpage.jsx'
 import process from 'process';
 import { Buffer } from 'buffer';
 
-// Define global polyfills
+// // Define global polyfills
 window.process = process;
 window.Buffer = Buffer;
 
