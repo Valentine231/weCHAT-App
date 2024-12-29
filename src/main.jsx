@@ -11,6 +11,13 @@ import 'react-native-get-random-values';
 import Homepage from './Components/Homepage.jsx'
 import Login from './Components/Login.jsx'
 import Errorpage from './Components/Errorpage.jsx'
+import process from 'process';
+import { Buffer } from 'buffer';
+
+// Define global polyfills
+window.process = process;
+window.Buffer = Buffer;
+
 
 
 
