@@ -9,8 +9,8 @@ dotenv.config({ path: '.env.local' });
 
 // Expose only specific environment variables
 const exposedEnv = {
-  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_KEY: process.env.VITE_SUPABASE_KEY,
+  VITE_SUPABASE_URL: JSON.stringify(process.env.VITE_SUPABASE_URL),
+  VITE_SUPABASE_KEY: JSON.stringify(process.env.VITE_SUPABASE_KEY),
 };
 
 export default defineConfig({
@@ -18,21 +18,26 @@ export default defineConfig({
   resolve: {
     alias: {
       'react-native': 'react-native-web',
+      stream: 'stream-browserify', // Optional: Alias for specific Node.js packages
+      util: 'util',               // Alias for utilities used in browser
     },
   },
   define: {
-    global: 'globalThis',
-    'process.env': JSON.stringify({ NODE_ENV: process.env.NODE_ENV || 'development' }), // Avoid exposing all variables; set to empty or only used by polyfills
-    'import.meta.env': JSON.stringify(exposedEnv), // Expose only selected variables
+    global: 'globalThis', // Use `globalThis` to mimic `global` in browsers
+    'process.env': {}, // Define process.env as an empty object to avoid errors
+    'import.meta.env': exposedEnv, // Only expose specific environment variables
   },
   optimizeDeps: {
     esbuildOptions: {
+      define: {
+        global: 'globalThis', // Ensure `global` is correctly defined for esbuild
+      },
       plugins: [
         NodeGlobalsPolyfillPlugin({
-          process: true,
-          buffer: true,
+          process: true, // Polyfill `process`
+          buffer: true,  // Polyfill `Buffer` if required
         }),
-        NodeModulesPolyfillPlugin(),
+        NodeModulesPolyfillPlugin(), // Polyfill Node.js modules
       ],
     },
   },
