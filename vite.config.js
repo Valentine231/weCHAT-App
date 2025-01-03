@@ -1,44 +1,47 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
-import dotenv from 'dotenv';
 
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
-
-// Expose only specific environment variables
-const exposedEnv = {
-  VITE_SUPABASE_URL: JSON.stringify(process.env.VITE_SUPABASE_URL),
-  VITE_SUPABASE_KEY: JSON.stringify(process.env.VITE_SUPABASE_KEY),
-};
-
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      'react-native': 'react-native-web',
-      stream: 'stream-browserify', // Optional: Alias for specific Node.js packages
-      util: 'util',               // Alias for utilities used in browser
-    },
-  },
-  define: {
-    global: 'globalThis', // Use `globalThis` to mimic `global` in browsers
-    'process.env': {}, // Define process.env as an empty object to avoid errors
-    'import.meta.env': exposedEnv, // Only expose specific environment variables
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      define: {
-        global: 'globalThis', // Ensure `global` is correctly defined for esbuild
+export default ({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  return defineConfig({
+    server: {
+      hmr: {
+        host: 'localhost',
+        port: 5173, // Ensure this matches your setup
+        protocol: 'ws', // Use 'wss' if using HTTPS
       },
-      plugins: [
-        NodeGlobalsPolyfillPlugin({
-          process: true, // Polyfill `process`
-          buffer: true,  // Polyfill `Buffer` if required
-        }),
-        NodeModulesPolyfillPlugin(), // Polyfill Node.js modules
-      ],
     },
-  },
-});
+    plugins: [react()],
+    resolve: {
+      alias: {
+        'react-native': 'react-native-web',
+        stream: 'stream-browserify',
+        util: 'util',
+      },
+    },
+    define: {
+      global: 'globalThis',
+      'process.env': {}, // Avoid undefined errors for process.env
+      'import.meta.env': {
+        VITE_SUPABASE_URL: JSON.stringify(env.VITE_SUPABASE_URL),
+        VITE_SUPABASE_KEY: JSON.stringify(env.VITE_SUPABASE_KEY),
+      },
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        define: {
+          global: 'globalThis',
+        },
+        plugins: [
+          NodeGlobalsPolyfillPlugin({
+            process: true,
+            buffer: true,
+          }),
+          NodeModulesPolyfillPlugin(),
+        ],
+      },
+    },
+  });
+};
