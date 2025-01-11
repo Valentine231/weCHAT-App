@@ -1,196 +1,97 @@
-import React, { useState, useEffect } from 'react';
-import {
-  createInitiator,
-  createResponder,
-  useMessageStore,
-  useSignalingStore,
-} from './Connectionmanger';
-
-import ChatHistory from './ChatHistory';
-import MessageInput from './MessageInput';
-import Profiles from './profile';
-import { Box, Button, TextField } from '@mui/material';
+import React, { useRef, useState } from "react";
+import ChatHistory from "./ChatHistory";
+import MessageInput from "./MessageInput";
+import { Box, Button, TextField } from "@mui/material";
+import SimplePeer from "simple-peer";
 
 const Chat = () => {
-  const messages = useMessageStore((state) => state.messages);
-  const [peer, setPeer] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [activeProfile, setActiveProfile] = useState(null);
-  const [role, setRole] = useState(); // 'initiator' or 'responder'
-  const [signalData, setSignalData] = useState(''); // Signal data input field
-  const [isResponder, setIsResponder] = useState(false); // Flag to toggle between initiator and responder mode
+  const [isInitiator, setIsInitiator] = useState(false);
+  const [signal, setSignal] = useState("");
+  const [remoteSignal, setRemoteSignal] = useState("");
+  const [connected, setConnected] = useState(false);
+  const [message, setmessage] = useState("");
+  const [messages, setmessages] = useState([]);
 
-  const { setSignalData: updateSignalData } = useSignalingStore.getState();
+  const peerRef = useRef(null);
 
-  // useEffect(() => {
-  //   let newPeer;
-
-  //   if (role === 'initiator') {
-  //     // Initiator logic
-  //     newPeer = createInitiator();
-
-  //     newPeer.on('signal', (data) => {
-  //       console.log('Initiator signal data:', data);
-  //       updateSignalData(data); // Save signal data to signaling store
-  //       setSignalData(JSON.stringify(data)); // Set signal data to state for copying
-  //     });
-  //   } else if (role === 'responder' && signalData) {
-  //     // Responder logic: Wait for initiator signal
-  //     newPeer = createResponder(JSON.parse(signalData));
-  //   }
-
-  //   if (newPeer) {
-  //     // General event handlers
-  //     newPeer.on('connect', () => {
-  //       console.log('Peer connected');
-  //       setIsConnected(true);
-  //     });
-
-  //     newPeer.on('data', (data) => {
-  //       const message = data.toString();
-  //       console.log('Received message:', message);
-  //       useMessageStore.getState().addMessage({ type: 'received', text: message });
-  //     });
-
-  //     setPeer(newPeer);
-  //   }
-
-  //   return () => {
-  //     if (newPeer) {
-  //       newPeer.destroy(); // Cleanup peer instance
-  //     }
-  //   };
-  // }, [role, signalData]);
-
-  useEffect(() => {
-    let newPeer;
-
-    if (role === 'initiator') {
-      newPeer = createInitiator();
-
-      newPeer.on('signal', (data) => {
-        updateSignalData(data);
-        setSignalData(JSON.stringify(data));
-      });
-    } else if (role === 'responder' && signalData) {
-      newPeer = createResponder(JSON.parse(signalData));
-    }
-
-    if (newPeer) {
-      newPeer.on('connect', () => {
-        setIsConnected(true);
-      });
-
-      newPeer.on('data', (data) => {
-        const message = data.toString();
-        useMessageStore.getState().addMessage({ type: 'received', text: message });
-      });
-
-      setPeer(newPeer);
-    }
-
-    return () => {
-      if (newPeer) {
-        newPeer.destroy();
-      }
-    };
-  }, [role, signalData]);
-
-  const handleSendMessage = (message) => {
-    if (peer && isConnected) {
-      try {
-        peer.send(message); // Send message via peer's data channel
-        console.log('Message sent:', message);
-        useMessageStore.getState().addMessage({ type: 'sent', text: message });
-      } catch (error) {
-        console.error('Failed to send message:', error);
-      }
-    } else {
-      console.error('Cannot send message: Peer is not connected');
-    }
+  const createPeer = (initiator) => {
+    const peer = new SimplePeer({ initiator, trickle: false });
+  
+    peer.on("signal", (data) => {
+      console.log("Generated signal:", data);
+      setSignal(JSON.stringify(data));
+    });
+  
+    peer.on("connect", () => {
+      console.log("Peer connected successfully!");
+      setConnected(true);
+    });
+  
+    peer.on("data", (data) => {
+      console.log("Received data:", data.toString());
+      setmessages((prevMessages) => [
+        ...prevMessages,
+        { sender: "peer", text: data.toString(), time: new Date().toLocaleTimeString() },
+      ]);
+    });
+  
+    peerRef.current = peer;
+    console.log("Peer created:", peer);
   };
-
-  const handleProfileClick = (profileId) => {
-    setActiveProfile(profileId);
-    console.log(`Active profile ID: ${profileId}`);
-    // Simulate a condition to switch between roles
-    setRole(profileId % 2 === 0 ? 'initiator' : 'responder');
-  };
-
-  const handleSignalPaste = () => {
+  
+  const handleConnect = () => {
+    if (!remoteSignal.trim()) {
+      console.error("Remote signal is empty.");
+      return;
+    }
+  
     try {
-      const parsedData = JSON.parse(signalData);
-      if (parsedData.type === 'offer') {
-        const responderPeer = createResponder(parsedData);
-        setPeer(responderPeer);
-      } else {
-        console.error('Invalid signal data type. Expected "offer".');
-      }
+      const signalData = JSON.parse(remoteSignal);
+      peerRef.current.signal(signalData); // Signal the peer
+      console.log("Signaled peer with:", signalData);
     } catch (error) {
-      console.error('Invalid signaling data format:', error);
+      console.error("Invalid signal data:", error);
     }
   };
+  
+
+  const sendMessage = () => {
+    if (!peerRef.current || !connected) {
+      console.error("Peer not connected.");
+      return;
+    }
+  
+    if (!message.trim()) {
+      console.error("Cannot send an empty message.");
+      return;
+    }
+  
+    console.log("Sending message:", message);
+    peerRef.current.send(message);
+    setmessages((prevMessages) => [
+      ...prevMessages,
+      { sender: "me", text: message, time: new Date().toLocaleTimeString() },
+    ]);
+    setmessage("");
+  };
+  
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on small screens, horizontally on larger ones
-        height: '100vh',
-      }}
-    >
-      {/* Profiles Sidebar */}
-      <Box
-        sx={{
-          width: { xs: '100%', sm: 250 }, // Full width on mobile, fixed width on larger screens
-          backgroundColor: '#f5f5f5',
-          padding: { xs: 1, sm: 2 }, // Adjust padding for different screen sizes
-          boxShadow: 3,
-        }}
-      >
-        <Profiles onProfileClick={handleProfileClick} />
-      </Box>
-
-      {/* Chat Content */}
-      <Box
-        sx={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: '#fff',
-          padding: { xs: 1, sm: 2 }, // Adjust padding for smaller screens
-        }}
-      >
-        <ChatHistory messages={messages} />
-
-        {/* Role Selection */}
-        <Box sx={{ marginBottom: 2 }}>
-          <Button onClick={() => setRole('initiator')} variant="contained" color="primary">
-            Set as Initiator
-          </Button>
-          <Button onClick={() => setRole('responder')} variant="contained" color="secondary" sx={{ marginLeft: 2 }}>
-            Set as Responder
-          </Button>
-        </Box>
-
-        {/* Signal Input */}
-        <Box sx={{ marginBottom: 2 }}>
-          <TextField
-            label="Signaling Data (Offer/Answer)"
-            variant="outlined"
-            multiline
-            rows={4}
-            fullWidth
-            value={signalData}
-            onChange={(e) => setSignalData(e.target.value)}
-            placeholder="Paste signaling data here"
-          />
-          <Button onClick={handleSignalPaste} variant="contained" color="primary" sx={{ marginTop: 2 }}>
-            Set as Responder
-          </Button>
-        </Box>
-
-        <MessageInput onSendMessage={handleSendMessage} disabled={!isConnected} />
-      </Box>
+    <Box>
+      <Button onClick={() => { setIsInitiator(true); createPeer(true); }}>Generate Signal</Button>
+      <TextField value={signal} disabled />
+      <TextField
+        value={remoteSignal}
+        onChange={(e) => setRemoteSignal(e.target.value)}
+      />
+      <Button onClick={() => { setIsInitiator(false); createPeer(false); }}>Join Chat</Button>
+      <Button onClick={handleConnect}>Connect</Button>
+      <ChatHistory messages={messages} />
+      <MessageInput
+        message={message}
+        onChange={(e) => setmessage(e.target.value)}
+        onSendMessage={sendMessage}
+      />
     </Box>
   );
 };
