@@ -51,20 +51,26 @@ export const usePeerStore = create((set, get) => ({
   // Handle connection using remote signal
   handleConnect: () => {
     const { peer, remoteSignal } = get();
-
-    if (!remoteSignal.trim()) {
-      console.error("Remote signal is empty.");
+  
+    if (!peer) {
+      console.error("Peer instance is not initialized.");
       return;
     }
-
+  
+    if (!remoteSignal || !remoteSignal.trim()) {
+      console.error("Remote signal is empty or invalid.");
+      return;
+    }
+  
     try {
       const signalData = JSON.parse(remoteSignal);
       peer.signal(signalData); // Signal the peer
       console.log("Signaled peer with:", signalData);
     } catch (error) {
-      console.error("Invalid signal data:", error);
+      console.error("Failed to parse remote signal data:", error);
     }
   },
+  
 
   // Send a message via the peer
   sendMessage: () => {
